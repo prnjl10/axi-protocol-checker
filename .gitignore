@@ -1,0 +1,26 @@
+# Vivado
+*.jou
+*.log
+*.str
+.Xil/
+*.cache/
+*.hw/
+*.gen/
+*.runs/
+*.sim/
+*.ip_user_files/
+vivado_*.backup.*
+*.ltx
+# Vitis HLS build artifacts
+*/solution*/.autopilot/
+*/solution*/syn/
+*/solution*/sim/
+*/solution*/impl/
+*/solution*/csim/
+# Python / Jupyter
+__pycache__/
+.ipynb_checkpoints/
+*.pyc
+# OS
+.DS_Store
+Thumbs.db
