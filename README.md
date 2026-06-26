@@ -2,8 +2,7 @@
 
 > A synthesizable, non-intrusive AXI4 protocol checker that monitors a live bus in
 > FPGA fabric, classifies and timestamps violations, and streams protocol health to
-> a Jupyter dashboard on the Zynq PS. Open, clause-traceable, and validated by a
-> reproducible fault-injection benchmark.
+> a Jupyter dashboard on the Zynq PS.
 
 ![status](https://img.shields.io/badge/status-in--development-yellow)
 ![platform](https://img.shields.io/badge/platform-PYNQ--Z2%20(Zynq--7020)-blue)
