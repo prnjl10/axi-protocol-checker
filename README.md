@@ -1,8 +1,7 @@
 # AXI4 Protocol Compliance Checker (PYNQ-Z2)
 
-> A synthesizable, non-intrusive AXI4 protocol checker that monitors a live bus in
-> FPGA fabric, classifies and timestamps violations, and streams protocol health to
-> a Jupyter dashboard on the Zynq PS. 
+A synthesizable, non-intrusive AXI4 protocol checker that monitors a live bus in FPGA fabric, classifies and timestamps violations, and streams protocol health to
+a Jupyter dashboard on the Zynq PS. 
 
 ## Overview
 
