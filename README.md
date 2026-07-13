@@ -38,22 +38,45 @@ Full design rationale and methodology: `docs/proposal.pdf`.
 
 The checker has **no outputs driving the bus** - attaching it cannot perturb traffic.
 
-## Scope
+## Scope & versioning
 
-### v1 - AXI4-Lite
-Handshake/stability, reset, response-code legality, write-strobe, address
-alignment, single-transaction ordering (checks **C01-C09**). Traffic from the
-configurable rogue master. Target: on-board + live dashboard.
+Versioning has two axes, and every milestone runs entirely in the programmable logic (PL):
 
-### v2 - Full AXI4
-Burst legality (4 KB boundary, burst type, WRAP length, AxSIZE), data-phase beat
-counting (WLAST/RLAST), ID matching, per-ID ordering, outstanding-transaction
-tracking (checks **C10-C20**). Adds an AXI DMA engine for realistic burst traffic.
+- **Protocol depth** - how much AXI the checker understands: **v1 (AXI4-Lite) -> v2 (full AXI4)**.
+- **Maturity stage** - what machinery sits on top of the checker: **Stage 0 (checker) -> Stage 1 (reporting acceleration) -> Stage 2 (in-fabric analytics)**.
+
+### Protocol depth
+
+**v1 - AXI4-Lite (checks C01-C09).** Handshake/stability, reset, response-code
+legality, write-strobe, address alignment, single-transaction ordering. Traffic
+from the configurable rogue master.
+
+**v2 - Full AXI4 (checks C10-C20).** Burst legality (4 KB boundary, burst type,
+WRAP length, AxSIZE), data-phase beat counting (WLAST/RLAST), ID matching, per-ID
+ordering, outstanding-transaction tracking. Adds an AXI DMA engine for realistic
+burst traffic.
 
 Check list and clause mapping: `docs/traceability_matrix.md`.
 
+### Maturity stages (applied to each depth)
+
+- **Stage 0 - checker:** detection, classification, timestamping, basic reporting, live Jupyter dashboard.
+- **Stage 1 - reporting acceleration:** deep event FIFO, on-chip timestamping, per-type counters/summaries so events survive a violation storm at line rate.
+- **Stage 2 - in-fabric analytics:** latency distributions, statistical protocol health, cross-channel / per-ID correlation.
+
+The Stage 1/2 observability core is protocol-agnostic - built once for v1 and re-pointed at v2.
+
 **Out of scope:** ACE/CHI, AXI3 write-data interleaving, active fault
 recovery/regulation, full exclusive-access verification.
+
+## Methodology
+
+Each check follows the same path: **AXI4 spec clause -> SVA (simulation oracle,
+bound to the bus) -> synthesizable RTL monitor**, graded against the Xilinx AXI
+VIP in passthrough monitor mode as an independent reference. Every check is
+clause-traceable and exercised by a fault-injection benchmark, and is tested
+*both* ways - it must fire on injected faults and stay silent on compliant traffic
+(a false positive is treated as seriously as a miss).
 
 ## Repository layout
 
@@ -70,12 +93,18 @@ recovery/regulation, full exclusive-access verification.
 
 ## Roadmap
 
-- [ ] Clause-traceability matrix (C01-C20)
-- [ ] Rogue master (AXI4-Lite) + fault modes
-- [ ] Checker v1 (C01-C09) + SVA + sim coverage
-- [ ] CSR + PS integration + Jupyter dashboard (on-board v1)
-- [ ] Full AXI4 checks (C10-C20) + outstanding-ID tracker
-- [ ] AXI DMA realistic-traffic demo + combined coverage report
+Six milestones across the two axes (**v1.0 -> v1.1 -> v1.2 -> v2.0 -> v2.1 -> v2.2**):
+
+- [ ] **v1.0** - AXI4-Lite checker (C01-C09), on board + live dashboard
+  - [ ] Clause-traceability matrix (C01-C09)
+  - [ ] Rogue master (AXI4-Lite) + fault modes (incl. rogue-slave mode for C07/C08)
+  - [ ] Checker monitors (C01-C09) + SVA + sim coverage vs AXI VIP oracle
+  - [ ] CSR + event FIFO + PS integration + Jupyter dashboard
+- [ ] **v1.1** - reporting acceleration (deep FIFO, on-chip timestamps, per-type counters)
+- [ ] **v1.2** - in-fabric analytics (latency distributions, protocol-health stats)
+- [ ] **v2.0** - full AXI4 checker (C10-C20) + outstanding-ID tracker + AXI DMA traffic
+- [ ] **v2.1** - reporting acceleration re-pointed at full-AXI4 events
+- [ ] **v2.2** - per-ID / burst analytics
 
 ## License
 
