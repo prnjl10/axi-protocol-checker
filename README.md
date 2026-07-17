@@ -48,8 +48,9 @@ Versioning has two axes, and every milestone runs entirely in the programmable l
 ### Protocol depth
 
 **v1 - AXI4-Lite (checks C01-C09).** Handshake/stability, reset, response-code
-legality, write-strobe, address alignment, single-transaction ordering. Traffic
-from the configurable rogue master.
+checks, write-strobe, address alignment, single-transaction ordering. Traffic
+from the configurable rogue master. C04 is an X/unknown design-integrity check
+(simulation-only); C05 covers EXOKAY legality on Lite.
 
 **v2 - Full AXI4 (checks C10-C20).** Burst legality (4 KB boundary, burst type,
 WRAP length, AxSIZE), data-phase beat counting (WLAST/RLAST), ID matching, per-ID
@@ -77,6 +78,9 @@ VIP in passthrough monitor mode as an independent reference. Every check is
 clause-traceable and exercised by a fault-injection benchmark, and is tested
 *both* ways - it must fire on injected faults and stay silent on compliant traffic
 (a false positive is treated as seriously as a miss).
+
+Most checks exist in two forms (SVA + synthesizable RTL). C04 is
+simulation-only, since X values do not exist in synthesized hardware.
 
 ## Repository layout
 
