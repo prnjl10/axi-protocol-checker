@@ -24,3 +24,10 @@ __pycache__/
 # OS
 .DS_Store
 Thumbs.db
+
+# xsim artifacts
+xsim.dir/
+*.wdb
+*.pb
+*.jou
+*.str
