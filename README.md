@@ -48,14 +48,18 @@ Versioning has two axes, and every milestone runs entirely in the programmable l
 ### Protocol depth
 
 **v1 - AXI4-Lite (checks C01-C09).** Handshake/stability, reset, response-code
-checks, write-strobe, address alignment, single-transaction ordering. Traffic
-from the configurable rogue master. C04 is an X/unknown design-integrity check
-(simulation-only); C05 covers EXOKAY legality on Lite.
+checks, address alignment, single-transaction ordering. Traffic from the
+configurable rogue master. Two checks are scoped out of v1 by Lite's own
+constraints: C04 becomes an X/unknown design-integrity check (simulation-only,
+since AXI4 defines all four RESP encodings and leaves none reserved), and C06
+(write-strobe legality) is deferred to v2, where AxSIZE and the address make
+strobe checking falsifiable. C05 covers EXOKAY legality on Lite.
 
-**v2 - Full AXI4 (checks C10-C20).** Burst legality (4 KB boundary, burst type,
-WRAP length, AxSIZE), data-phase beat counting (WLAST/RLAST), ID matching, per-ID
-ordering, outstanding-transaction tracking. Adds an AXI DMA engine for realistic
-burst traffic.
+**v2 - Full AXI4 (checks C06, C10-C20).** Write-strobe legality (C06, deferred
+from v1), burst legality (4 KB boundary, burst type, WRAP length, AxSIZE),
+data-phase beat counting (WLAST/RLAST), ID matching, per-ID ordering,
+outstanding-transaction tracking. Adds an AXI DMA engine for realistic burst
+traffic.
 
 Check list and clause mapping: `docs/traceability_matrix.md`.
 
