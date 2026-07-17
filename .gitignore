@@ -31,3 +31,13 @@ xsim.dir/
 *.pb
 *.jou
 *.str
+
+# xsim artifacts
+xsim.dir/
+*.wdb
+*.pb
+*.jou
+*.str
+
+# local study material - not for the repo
+docs/AXI_Interview_Prep_v1.pdf
