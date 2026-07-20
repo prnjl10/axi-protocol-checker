@@ -29,6 +29,20 @@ module tb_ordering;
       end
   end
 
+// ---- SVA reference for C07/C08 (golden spec) ----
+  // helper flags mirrored in SVA-land via the same handshake events
+  // (we reuse the DUT's live signals; the properties assert prerequisites hold)
+
+  // C07: whenever B is accepted, both AW and W must already have been accepted.
+  a_c07: assert property (@(posedge ACLK) disable iff (!ARESETn)
+           (BVALID && BREADY) |-> (u_ord.aw_ok && u_ord.w_ok))
+         else $error("SVA C07: B before AW/W @ %0t", $time);
+
+  // C08: whenever R is accepted, AR must already have been accepted.
+  a_c08: assert property (@(posedge ACLK) disable iff (!ARESETn)
+           (RVALID && RREADY) |-> u_ord.ar_ok)
+         else $error("SVA C08: R before AR @ %0t", $time);
+
   // drive everything idle
   task idle;
       AWVALID=0; AWREADY=0; WVALID=0; WREADY=0; BVALID=0; BREADY=0;

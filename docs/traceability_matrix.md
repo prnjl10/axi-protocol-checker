@@ -29,8 +29,8 @@ test done, SVA pending · `deferred` = out of v1 scope · `pending` = not yet bu
 | C04 | RESP is not X/unknown while VALID high | *design integrity — not a spec clause* | comb (sim) | planned | n/a (no X in hardware) | pending | deferred |
 | C05 | EXOKAY (2'b01) never returned on AXI4-Lite | Response encoding — no AxLOCK on Lite | comb | yes | `axi_lite_comb_checks` | `tb_comb` | done |
 | C06 | Write-strobe legality (WSTRB within legal lanes) | Write strobes — needs AxSIZE | comb | — | — | — | deferred → v2 |
-| C07 | B response only after AW **and** W accepted | Write response dependencies | state | pending | pending | pending | pending |
-| C08 | R response only after AR accepted | Read data dependencies | state | pending | pending | pending | pending |
+| C07 | B response only after AW **and** W accepted | Write response dependencies | state | yes | axi_ordering_monitor | tb_ordering | done |
+| C08 | R response only after AR accepted | Read data dependencies | state | yes | axi_ordering_monitor | tb_ordering | done |
 | C09 | Address aligned to data-bus width | Address structure / alignment | comb | yes | `axi_lite_comb_checks` | `tb_comb` | done |
 
 ## Scoping decisions (documented, not omissions)
