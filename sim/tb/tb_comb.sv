@@ -30,6 +30,22 @@ module tb_comb;
       if (viol_c09) $display("RTL C09 @ %0t", $time);
   end
 
+  // C03: no VALID may be high while reset is asserted.
+  // NOTE: deliberately NO 'disable iff' - this check polices the reset window itself.
+  a_c03: assert property (@(posedge ACLK)
+           (!ARESETn) |-> (!AWVALID && !WVALID && !BVALID && !ARVALID && !RVALID))
+         else $error("SVA C03: VALID high during reset @ %0t", $time);
+
+  // C05: EXOKAY (2'b01) is illegal on AXI4-Lite.
+  a_c05: assert property (@(posedge ACLK) disable iff (!ARESETn)
+           (BVALID |-> BRESP != 2'b01) and (RVALID |-> RRESP != 2'b01))
+         else $error("SVA C05: EXOKAY on Lite @ %0t", $time);
+
+  // C09: addresses must be aligned to the data-bus width (32-bit -> bottom 2 bits 0).
+  a_c09: assert property (@(posedge ACLK) disable iff (!ARESETn)
+           (AWVALID |-> AWADDR[1:0] == 2'b00) and (ARVALID |-> ARADDR[1:0] == 2'b00))
+         else $error("SVA C09: misaligned address @ %0t", $time);
+
   // helper: drive everything to a known idle state
   task idle;
       AWVALID=0; WVALID=0; BVALID=0; ARVALID=0; RVALID=0;
