@@ -12,7 +12,7 @@ Most checks exist in both forms; exceptions are noted.
 - *hist* — temporal-history: this cycle vs. last cycle (1-cycle registers).
 - *state* — temporal-stateful: remembered events across a transaction (a scoreboard).
 
-**Status:** `done` = SVA/RTL written and cross-checked in sim · `partial` = RTL +
+**Status:** `done` = SVA + RTL written and cross-checked in sim · `partial` = RTL +
 test done, SVA pending · `deferred` = out of v1 scope · `pending` = not yet built.
 
 > Clause anchors below use the ARM protocol-assertion naming convention. Exact
@@ -25,13 +25,13 @@ test done, SVA pending · `deferred` = out of v1 scope · `pending` = not yet bu
 |----|------------------|----------------------|---------|-----|-----|------|--------|
 | C01 | VALID not retracted before handshake completes | Handshake process — `*VALID_STABLE` | hist | yes | `axi_handshake_monitor` | `tb_c01` | done |
 | C02 | Payload stable while VALID high, READY low | Handshake process — `*ADDR/DATA_STABLE` | hist | yes | `axi_handshake_monitor` | `tb_c01` | done |
-| C03 | No VALID asserted while ARESETn low | Reset — VALID low during reset | comb | pending | `axi_lite_comb_checks` | `tb_comb` | partial |
+| C03 | No VALID asserted while ARESETn low | Reset — VALID low during reset | comb | yes | `axi_lite_comb_checks` | `tb_comb` | done |
 | C04 | RESP is not X/unknown while VALID high | *design integrity — not a spec clause* | comb (sim) | planned | n/a (no X in hardware) | pending | deferred |
-| C05 | EXOKAY (2'b01) never returned on AXI4-Lite | Response encoding — no AxLOCK on Lite | comb | pending | `axi_lite_comb_checks` | `tb_comb` | partial |
+| C05 | EXOKAY (2'b01) never returned on AXI4-Lite | Response encoding — no AxLOCK on Lite | comb | yes | `axi_lite_comb_checks` | `tb_comb` | done |
 | C06 | Write-strobe legality (WSTRB within legal lanes) | Write strobes — needs AxSIZE | comb | — | — | — | deferred → v2 |
 | C07 | B response only after AW **and** W accepted | Write response dependencies | state | pending | pending | pending | pending |
 | C08 | R response only after AR accepted | Read data dependencies | state | pending | pending | pending | pending |
-| C09 | Address aligned to data-bus width | Address structure / alignment | comb | pending | `axi_lite_comb_checks` | `tb_comb` | partial |
+| C09 | Address aligned to data-bus width | Address structure / alignment | comb | yes | `axi_lite_comb_checks` | `tb_comb` | done |
 
 ## Scoping decisions (documented, not omissions)
 
@@ -67,7 +67,13 @@ determine which lanes are *legal* to assert. Moved to the v2 check set.
 
 ## Progress
 
-- **Done (cross-validated):** C01, C02
-- **Partial (RTL + test; SVA pending):** C03, C05, C09
-- **Deferred with rationale:** C04 (sim-only), C06 (→ v2)
+- **Done (SVA + RTL cross-validated):** C01, C02, C03, C05, C09
+- **Deferred with rationale:** C04 (sim-only X-check), C06 (→ v2)
 - **Pending:** C07, C08 (stateful ordering — the last v1 engineering)
+
+## Test map
+
+| Testbench | Covers | Run |
+|-----------|--------|-----|
+| `sim/tb/tb_c01.sv`  | C01, C02 (AW channel; handshake monitor) | `xvlog -sv rtl/checker/axi_handshake_monitor.sv sim/tb/tb_c01.sv && xelab tb -debug typical && xsim tb -runall` |
+| `sim/tb/tb_comb.sv` | C03, C05, C09 (combinational checks) | `xvlog -sv rtl/checker/axi_lite_comb_checks.sv sim/tb/tb_comb.sv && xelab tb_comb -debug typical && xsim tb_comb -runall` |
