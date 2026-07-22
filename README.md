@@ -1,4 +1,4 @@
-# AXI4 Protocol Compliance Checker (PYNQ-Z2)
+# AXI4-Lite Protocol Compliance Checker (PYNQ-Z2)
 
 > A synthesizable, non-intrusive AXI4 protocol checker that monitors a live bus in
 > FPGA fabric, classifies and timestamps violations, and streams protocol health to
