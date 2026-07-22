@@ -151,18 +151,6 @@ Two findings worth noting, both surfaced by the hand-translation from SVA to RTL
 | `vivado/`           | Vivado project and packaged IP |
 | `docs/`             | proposal, traceability matrix |
 
-## Reproducing
-
-**Simulation** (Vivado `xsim`, from the repo root):
-
-```bash
-xvlog -sv rtl/common/axi_checker_pkg.sv rtl/checker/*.sv rtl/rogue_master/*.sv sim/tb/tb_top.sv
-xelab tb_top -debug typical
-xsim tb_top -runall
-```
-
-**On hardware:** copy `pynq/overlay/axi_checker.{bit,hwh}` and
-`pynq/notebooks/axi_checker_dashboard.ipynb` to the board, then run the notebook.
 
 ## Roadmap
 
