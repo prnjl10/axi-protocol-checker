@@ -1,5 +1,7 @@
 `timescale 1ns/1ns
 
+import axi_checker_pkg::*;
+
 module tb_rogue;
 
   localparam int ADDR_W = 32;
@@ -14,10 +16,18 @@ module tb_rogue;
   logic BVALID;  logic [1:0] BRESP;         logic BREADY;
   logic busy;
 
+  // read channels unused here - tie off for the checker
+  logic ARVALID = 0, ARREADY = 0, RVALID = 0, RREADY = 0;
+  logic [ADDR_W-1:0] ARADDR = 0;
+  logic [1:0] RRESP = 0;
+
+  logic [N_VIOL-1:0] violations;
+  logic              viol_any;
+
   initial ACLK = 0;
   always #5 ACLK = ~ACLK;
 
-  // ---- DUT: the rogue master ----
+  // ---- rogue master ----
   rogue_master #(.ADDR_W(ADDR_W), .DATA_W(DATA_W)) u_master (
       .ACLK(ACLK), .ARESETn(ARESETn),
       .start(start), .fault_mode(fault_mode),
@@ -27,55 +37,95 @@ module tb_rogue;
       .busy(busy)
   );
 
-  // ============================================================
-  // Minimal ALWAYS-READY slave.
-  //   - AWREADY, WREADY tied high (accept immediately)
-  //   - BVALID raised the cycle after W is accepted, held until BREADY
-  // ============================================================
-  assign AWREADY = 1'b1;
-  assign WREADY  = 1'b1;
+  // ---- checker watching the same bus (read-only tap) ----
+  axi_checker_core #(.ADDR_W(ADDR_W), .DATA_W(DATA_W)) u_core (
+      .ACLK(ACLK), .ARESETn(ARESETn),
+      .AWVALID(AWVALID), .AWREADY(AWREADY), .AWADDR(AWADDR),
+      .WVALID(WVALID),   .WREADY(WREADY),   .WDATA(WDATA),
+      .BVALID(BVALID),   .BREADY(BREADY),   .BRESP(BRESP),
+      .ARVALID(ARVALID), .ARREADY(ARREADY), .ARADDR(ARADDR),
+      .RVALID(RVALID),   .RREADY(RREADY),   .RRESP(RRESP),
+      .violations(violations), .viol_any(viol_any)
+  );
 
-  // B response: assert BVALID after the write data is accepted,
-  // clear it once the master accepts (BREADY high).
+  // ============================================================
+  // DELAYED-READY slave: stalls 2 cycles before accepting.
+  // The stall creates the "waiting window" that faults violate.
+  // ============================================================
+  logic [1:0] aw_wait, w_wait;
+
   always_ff @(posedge ACLK) begin
       if (!ARESETn) begin
-          BVALID <= 1'b0;
-          BRESP  <= 2'b00;
+          aw_wait <= 0; w_wait <= 0;
+          BVALID  <= 0; BRESP  <= 0;
       end else begin
-          if (WVALID && WREADY) begin      // data just accepted -> response ready
-              BVALID <= 1'b1;
-              BRESP  <= 2'b00;             // OKAY
-          end else if (BVALID && BREADY) begin  // master accepted response
-              BVALID <= 1'b0;
-          end
+          // AW: count while master is asserting, accept on 3rd cycle
+          if (AWVALID && !AWREADY) aw_wait <= aw_wait + 1;
+          else if (AWVALID && AWREADY) aw_wait <= 0;
+
+          if (WVALID && !WREADY) w_wait <= w_wait + 1;
+          else if (WVALID && WREADY) w_wait <= 0;
+
+          // B response
+          if (WVALID && WREADY)          begin BVALID <= 1; BRESP <= 2'b00; end
+          else if (BVALID && BREADY)     BVALID <= 0;
       end
   end
 
-  // ---- trace the FSM state each cycle ----
+  assign AWREADY = AWVALID && (aw_wait >= 2);   // accept after 2-cycle stall
+  assign WREADY  = WVALID  && (w_wait  >= 2);
+
+  // ---- decoder ----
+  function string viol_name(int idx);
+      case (idx)
+          V_C01_AW: return "C01 AW-retract";  V_C01_W:  return "C01 W-retract";
+          V_C01_B:  return "C01 B-retract";   V_C01_AR: return "C01 AR-retract";
+          V_C01_R:  return "C01 R-retract";   V_C02_AW: return "C02 AW-stable";
+          V_C02_W:  return "C02 W-stable";    V_C02_B:  return "C02 B-stable";
+          V_C02_AR: return "C02 AR-stable";   V_C02_R:  return "C02 R-stable";
+          V_C03:    return "C03 reset";       V_C05:    return "C05 EXOKAY";
+          V_C07:    return "C07 write-order"; V_C08:    return "C08 read-order";
+          V_C09:    return "C09 align";       default:  return "unknown";
+      endcase
+  endfunction
+
   always_ff @(posedge ACLK) begin
-      if (ARESETn)
-          $display("[%0t] state=%s AWVALID=%b WVALID=%b BREADY=%b BVALID=%b busy=%b",
-                   $time, u_master.state.name(), AWVALID, WVALID, BREADY, BVALID, busy);
+      if (ARESETn && viol_any)
+          for (int i = 0; i < N_VIOL; i++)
+              if (violations[i])
+                  $display("    [%0t] bit %0d -> %s", $time, i, viol_name(i));
   end
 
+  // ---- run one transaction with a given fault mode ----
+  task run_txn(input logic [3:0] mode, input string label);
+      $display("\n--- %s (fault_mode=%0d) ---", label, mode);
+      fault_mode = mode;
+      start = 1;
+      @(negedge ACLK);
+      start = 0;
+      // wait for completion, with a timeout in case a fault stalls the FSM
+      fork
+          begin wait (!busy); end
+          begin repeat (40) @(negedge ACLK); end
+      join_any
+      disable fork;
+      repeat (3) @(negedge ACLK);
+  endtask
+
   initial begin
-      ARESETn=0; start=0; fault_mode=0;
+      ARESETn = 0; start = 0; fault_mode = 0;
       repeat (2) @(negedge ACLK);
-      ARESETn=1;
+      ARESETn = 1;
       @(negedge ACLK);
 
-      // kick off one write transaction
-      $display("\n--- start one legal write ---");
-      start=1;
-      @(negedge ACLK);
-      start=0;                    // start is a one-cycle pulse
+      run_txn(4'd0, "LEGAL write (expect silence)");
+      run_txn(4'd1, "C01 on AW  (expect bit 0)");
+      run_txn(4'd2, "C02 on AW  (expect bit 5)");
+      run_txn(4'd3, "C01 on W   (expect bit 1)");
+      run_txn(4'd4, "C02 on W   (expect bit 6)");
+      run_txn(4'd5, "C09 misaligned (expect bit 14)");
 
-      // let the transaction run to completion
-      wait (!busy);               // busy drops when back in IDLE
-      @(negedge ACLK);
-
-      $display("\n--- transaction complete @ %0t ---", $time);
-      repeat (2) @(negedge ACLK);
+      $display("\n--- done @ %0t ---", $time);
       $finish;
   end
 
